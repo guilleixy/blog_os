@@ -11,15 +11,23 @@ use blog_os::println;
 pub extern "C" fn _start() -> ! {
     println!("Hello World{}", "!");
 
-    blog_os::init(); // new
+    blog_os::init();
 
-    // invoke a breakpoint exception
-    x86_64::instructions::interrupts::int3();
+    // fn stack_overflow() {
+    //     stack_overflow(); // for each recursion, the return address is pushed
+    // }
 
+    // trigger a stack overflow
+    // stack_overflow();
     #[cfg(test)]
     test_main();
 
-    loop {}
+    println!("It did not crash!");
+    blog_os::hlt_loop(); 
+    // loop {
+    //     use blog_os::print;
+    //     print!("-"); 
+    // }
 }
 
 /// This function is called on panic.
@@ -27,7 +35,8 @@ pub extern "C" fn _start() -> ! {
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
-    loop {}
+    blog_os::hlt_loop(); 
+    // loop {}
 }
 
 #[cfg(test)]
