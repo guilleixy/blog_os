@@ -6,6 +6,9 @@ use lazy_static::lazy_static;
 use pic8259::ChainedPics;
 use spin;
 
+use x86_64::structures::idt::PageFaultErrorCode;
+use crate::hlt_loop;
+
 pub const PIC_1_OFFSET: u8 = 32;
 pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
 
@@ -24,6 +27,7 @@ lazy_static! {
         .set_handler_fn(keyboard_interrupt_handler);
         idt[InterruptIndex::Timer.as_usize()]
             .set_handler_fn(timer_interrupt_handler);
+        idt.page_fault.set_handler_fn(page_fault_handler);
         idt
     };
 }
@@ -110,5 +114,29 @@ impl InterruptIndex {
 
     fn as_usize(self) -> usize {
         usize::from(self.as_u8())
+    }
+}
+extern "x86-interrupt" fn page_fault_handler(
+    stack_frame: InterruptStackFrame,
+    error_code: PageFaultErrorCode,
+) {
+    use x86_64::registers::control::Cr2;
+
+    println!("EXCEPTION: PAGE FAULT");
+    println!("Accessed Address: {:?}", Cr2::read());
+    println!("Error Code: {:?}", error_code);
+    println!("{:#?}", stack_frame);
+    hlt_loop();
+}
+
+pub struct ScancodeStream {
+    _private: (),
+}
+
+impl ScancodeStream {
+    pub fn new() -> Self {
+        SCANCODE_QUEUE.try_init_once(|| ArrayQueue::new(100))
+            .expect("ScancodeStream::new should only be called once");
+        ScancodeStream { _private: () }
     }
 }
